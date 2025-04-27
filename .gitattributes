@@ -1,7 +1,7 @@
 * text=auto
 
-*.cpp   export-ignore
-*.h     export-ignore
-*.cc    export-ignore
-*.hpp   export-ignore
-CMakeLists.txt export-ignore
+**.cpp   linguist-documentation
+**.h     linguist-documentation
+**.cc    linguist-documentation
+**.hpp   linguist-documentation
+**.txt linguist-documentation
