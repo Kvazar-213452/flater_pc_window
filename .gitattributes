@@ -1,0 +1,7 @@
+* text=auto
+
+*.cpp   export-ignore
+*.h     export-ignore
+*.cc    export-ignore
+*.hpp   export-ignore
+CMakeLists.txt export-ignore
