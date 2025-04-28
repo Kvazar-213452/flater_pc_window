@@ -2,19 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 class RemoteScreenPage extends StatefulWidget {
+  final String serverUrl;
+  final int fps;
+
+  const RemoteScreenPage({Key? key, required this.serverUrl, required this.fps}) : super(key: key);
+
   @override
   _RemoteScreenPageState createState() => _RemoteScreenPageState();
 }
 
 class _RemoteScreenPageState extends State<RemoteScreenPage> {
   Uint8List? imageBytes;
-  final String serverUrl = 'http://192.168.0.101:5000'; // <-- заміни на свою IP адресу
-  double screenWidth = 0;
-  double screenHeight = 0;
-  double serverScreenWidth = 1920; // Наприклад, екран комп'ютера (можна змінити)
-  double serverScreenHeight = 1080; // Наприклад, екран комп'ютера (можна змінити)
+  Size? imageRealSize;
+  Size? imageDisplaySize;
+  double scaleFactor = 1.0;
+  Offset imageOffset = Offset.zero;
 
   @override
   void initState() {
@@ -22,88 +27,96 @@ class _RemoteScreenPageState extends State<RemoteScreenPage> {
     fetchScreenshot();
   }
 
-  // Оновлюємо кадри кожні 33 мс (30 FPS)
-  void fetchScreenshot() async {
-    while (true) {
-      try {
-        final response = await http.get(Uri.parse('$serverUrl/screenshot'));
-        if (response.statusCode == 200) {
-          setState(() {
-            imageBytes = response.bodyBytes;
-          });
-        }
-      } catch (e) {
-        print('Error: $e');
+  Future<void> fetchScreenshot() async {
+    try {
+      final response = await http.get(Uri.parse('${widget.serverUrl}/screenshot'));
+      if (response.statusCode == 200 && mounted) {
+        setState(() {
+          imageBytes = response.bodyBytes;
+        });
       }
-      await Future.delayed(Duration(milliseconds: 33)); // 30 fps
+    } catch (e) {
+      if (kDebugMode) print('Error: $e');
+    }
+    
+    final delay = Duration(milliseconds: (1000 / widget.fps).round());
+    Future.delayed(delay, fetchScreenshot);
+  }
+
+  Future<void> sendTouch(Offset localPosition) async {
+    if (imageBytes == null || imageDisplaySize == null || imageRealSize == null) return;
+
+    final dx = (localPosition.dx - imageOffset.dx) / scaleFactor;
+    final dy = (localPosition.dy - imageOffset.dy) / scaleFactor;
+
+    final x = dx.clamp(0, imageRealSize!.width);
+    final y = dy.clamp(0, imageRealSize!.height);
+
+    try {
+      await http.post(
+        Uri.parse('${widget.serverUrl}/touch'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'x': x.toInt(), 'y': y.toInt()}),
+      );
+    } catch (e) {
+      if (kDebugMode) print('Error sending touch: $e');
     }
   }
 
-  // Обробка кліків з масштабуванням
-  void sendTouch(Offset position, String action) async {
-    if (imageBytes == null) return;
-
-    // Визначаємо розміри екрана на мобільному пристрої
-    double screenWidthPhone = MediaQuery.of(context).size.width;
-    double screenHeightPhone = MediaQuery.of(context).size.height;
-
-    // Розміри зображення на екрані телефону
-    double imgWidth = screenWidth;
-    double imgHeight = screenHeight;
-
-    // Масштабування координат для кліка на екрані
-    double scaleX = imgWidth / screenWidthPhone;
-    double scaleY = imgHeight / screenHeightPhone;
-
-    // Масштабування для екрану сервера
-    double serverScaleX = serverScreenWidth / imgWidth;
-    double serverScaleY = serverScreenHeight / imgHeight;
-
-    // Коригуємо координати для видалення відступу
-    final adjustedX = position.dx - 50; // Віднімаємо 50px від лівого відступу
-    final adjustedY = position.dy - 50; // Віднімаємо 50px від верхнього відступу
-
-    // Обчислюємо масштабовані координати для сервера
-    final dx = ((adjustedX * scaleX) * serverScaleX).toInt();
-    final dy = ((adjustedY * scaleY) * serverScaleY).toInt();
-
-    print("Original: (${position.dx}, ${position.dy})");
-    print("Adjusted: ($adjustedX, $adjustedY)");
-    print("Scaled: ($dx, $dy)");
-
-    // Відправка запиту на сервер для обробки кліка
-    await http.post(
-      Uri.parse('$serverUrl/touch'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'x': dx,
-        'y': dy,
-        'action': action
-      }),
+  void _updateImageParams(Size realSize, Size displaySize) {
+    scaleFactor = displaySize.width / realSize.width;
+    imageOffset = Offset(
+      (MediaQuery.of(context).size.width - displaySize.width) / 2,
+      (MediaQuery.of(context).size.height - displaySize.height) / 2,
     );
+    imageRealSize = realSize;
+    imageDisplaySize = displaySize;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Видалено AppBar
       body: GestureDetector(
-        onPanUpdate: (details) {
-          sendTouch(details.localPosition, 'move');
-        },
-        onTapDown: (details) {
-          sendTouch(details.localPosition, 'click');
-        },
-        child: Center(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // Оновлюємо розміри екрана телефону
-              screenWidth = constraints.maxWidth;
-              screenHeight = constraints.maxHeight;
-
-              return imageBytes != null
-                  ? Image.memory(imageBytes!)
-                  : Center(child: CircularProgressIndicator());
-            },
+        onTapDown: (details) => sendTouch(details.localPosition),
+        onPanUpdate: (details) => sendTouch(details.localPosition),
+        child: Container(
+          color: Colors.grey[300],
+          child: Center(
+            child: imageBytes != null
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Image.memory(
+                        imageBytes!,
+                        fit: BoxFit.contain,
+                        frameBuilder: (context, child, frame, _) {
+                          if (frame == null) return child;
+                          
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            final renderBox = context.findRenderObject() as RenderBox?;
+                            if (renderBox != null && mounted) {
+                              final imageInfo = Image.memory(imageBytes!).image;
+                              imageInfo.resolve(ImageConfiguration()).addListener(
+                                ImageStreamListener((info, _) {
+                                  if (mounted) {
+                                    _updateImageParams(
+                                      Size(
+                                        info.image.width.toDouble(),
+                                        info.image.height.toDouble(),
+                                      ),
+                                      renderBox.size,
+                                    );
+                                  }
+                                }),
+                              );
+                            }
+                          });
+                          return child;
+                        },
+                      );
+                    },
+                  )
+                : CircularProgressIndicator(),
           ),
         ),
       ),
