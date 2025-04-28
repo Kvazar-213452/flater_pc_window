@@ -9,24 +9,20 @@ app = Flask(__name__)
 CORS(app)
 
 def get_ip_addresses():
-    """Отримати всі IP-адреси сервера"""
     hostname = socket.gethostname()
     ip_list = []
     
-    # Отримуємо всі IP-адреси
     try:
         ip_list = socket.gethostbyname_ex(hostname)[2]
     except:
         pass
     
-    # Додаємо localhost
     if '127.0.0.1' not in ip_list:
         ip_list.append('127.0.0.1')
     
     return ip_list
 
 def write_config():
-    """Записати конфігурацію у файл"""
     ip_addresses = get_ip_addresses()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
@@ -73,8 +69,6 @@ def touch():
         return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
-    # Записуємо інформацію про IP при запуску
     write_config()
     
-    # Запускаємо сервер
     app.run(host='0.0.0.0', port=5000, threaded=True)
