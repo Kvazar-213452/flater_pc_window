@@ -1,10 +1,40 @@
 from flask import Flask, request, jsonify, send_file
 import pyautogui
 import io
+import socket
 from flask_cors import CORS
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
+
+def get_ip_addresses():
+    """Отримати всі IP-адреси сервера"""
+    hostname = socket.gethostname()
+    ip_list = []
+    
+    # Отримуємо всі IP-адреси
+    try:
+        ip_list = socket.gethostbyname_ex(hostname)[2]
+    except:
+        pass
+    
+    # Додаємо localhost
+    if '127.0.0.1' not in ip_list:
+        ip_list.append('127.0.0.1')
+    
+    return ip_list
+
+def write_config():
+    """Записати конфігурацію у файл"""
+    ip_addresses = get_ip_addresses()
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    with open('conf.txt', 'w') as f:
+        f.write(f"Server started at: {timestamp}\n")
+        f.write("Available IP addresses:\n")
+        for ip in ip_addresses:
+            f.write(f" * Running on http://{ip}:5000\n")
 
 @app.route('/screenshot', methods=['GET'])
 def screenshot():
@@ -24,7 +54,6 @@ def touch():
         x = int(data['x'])
         y = int(data['y'])
         
-        # Додамо невелику корекцію для компенсації затримки
         x = max(0, min(x, pyautogui.size().width - 1))
         y = max(0, min(y, pyautogui.size().height - 1))
         
@@ -44,4 +73,8 @@ def touch():
         return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
+    # Записуємо інформацію про IP при запуску
+    write_config()
+    
+    # Запускаємо сервер
     app.run(host='0.0.0.0', port=5000, threaded=True)

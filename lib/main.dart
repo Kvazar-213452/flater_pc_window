@@ -10,9 +10,31 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Remote Control',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: Colors.grey[300], // Сірий фон
+      theme: ThemeData.dark().copyWith(
+        primaryColor: Colors.blueGrey[800],
+        scaffoldBackgroundColor: Colors.grey[900],
+        appBarTheme: AppBarTheme(
+          color: Colors.blueGrey[900],
+          elevation: 0,
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.grey[800],
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
+          labelStyle: TextStyle(color: Colors.white70),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blueGrey[700],
+            padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
       ),
       home: SettingsScreen(),
     );
@@ -40,7 +62,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Налаштування підключення'),
+        title: Text('viva 213452'),
+        centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -51,15 +74,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               TextFormField(
                 controller: _urlController,
+                style: TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  labelText: 'URL сервера',
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
+                  labelText: 'Server URL',
+                  hintText: 'Enter server address',
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Будь ласка, введіть URL';
+                    return 'Please enter URL';
                   }
                   return null;
                 },
@@ -67,29 +89,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SizedBox(height: 20),
               TextFormField(
                 controller: _fpsController,
+                style: TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  labelText: 'FPS (кадрів на секунду)',
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
+                  labelText: 'FPS (frames per second)',
+                  hintText: 'Enter FPS value',
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Будь ласка, введіть FPS';
+                    return 'Please enter FPS';
                   }
                   final fps = int.tryParse(value);
                   if (fps == null || fps <= 0 || fps > 60) {
-                    return 'Введіть число від 1 до 60';
+                    return 'Enter number between 1-60';
                   }
                   return null;
                 },
               ),
               SizedBox(height: 30),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                ),
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
                     Navigator.push(
@@ -103,7 +121,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
                   }
                 },
-                child: Text('Підключитись', style: TextStyle(fontSize: 18)),
+                child: Text('Connect', style: TextStyle(fontSize: 18)),
               ),
             ],
           ),
