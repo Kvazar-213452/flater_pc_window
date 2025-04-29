@@ -67,6 +67,30 @@ def touch():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+    
+
+@app.route('/keypress', methods=['POST'])
+def keypress():
+    try:
+        data = request.json
+        key = data.get('key')
+        action = data.get('action', 'press')
+        
+        if action == 'press':
+            if key == 'space':
+                pyautogui.press('space')
+            elif key == 'enter':
+                pyautogui.press('enter')
+            elif key == 'backspace':
+                pyautogui.press('backspace')
+            elif len(key) == 1:  # Для одинарних символів (букви/цифри)
+                pyautogui.write(key)
+            else:  # Для інших спеціальних клавіш
+                pyautogui.press(key)
+                
+        return jsonify({'status': 'success', 'key': key, 'action': action})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
     write_config()

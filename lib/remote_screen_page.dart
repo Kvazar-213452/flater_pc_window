@@ -20,6 +20,7 @@ class _RemoteScreenPageState extends State<RemoteScreenPage> {
   Size? imageDisplaySize;
   double scaleFactor = 1.0;
   Offset imageOffset = Offset.zero;
+  bool showKeyboard = false;
 
   @override
   void initState() {
@@ -63,6 +64,18 @@ class _RemoteScreenPageState extends State<RemoteScreenPage> {
     }
   }
 
+  Future<void> sendKeyPress(String key, {String action = 'press'}) async {
+    try {
+      await http.post(
+        Uri.parse('${widget.serverUrl}/keypress'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'key': key, 'action': action}),
+      );
+    } catch (e) {
+      if (kDebugMode) print('Error sending key press: $e');
+    }
+  }
+
   void _updateImageParams(Size realSize, Size displaySize) {
     scaleFactor = displaySize.width / realSize.width;
     imageOffset = Offset(
@@ -73,53 +86,143 @@ class _RemoteScreenPageState extends State<RemoteScreenPage> {
     imageDisplaySize = displaySize;
   }
 
+  Widget _buildVirtualKeyboard() {
+  return Container(
+    color: Colors.grey[800],
+    padding: EdgeInsets.all(8),
+    child: Column(
+      children: [
+        // Перший рядок (цифри)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].map((key) {
+            return ElevatedButton(
+              onPressed: () => sendKeyPress(key),
+              child: Text(key),
+            );
+          }).toList(),
+        ),
+        SizedBox(height: 8),
+        // Другий рядок (букви)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'].map((key) {
+            return ElevatedButton(
+              onPressed: () => sendKeyPress(key),
+              child: Text(key),
+            );
+          }).toList(),
+        ),
+        SizedBox(height: 8),
+        // Третій рядок (букви)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'].map((key) {
+            return ElevatedButton(
+              onPressed: () => sendKeyPress(key),
+              child: Text(key),
+            );
+          }).toList(),
+        ),
+        SizedBox(height: 8),
+        // Четвертий рядок (букви)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: ['z', 'x', 'c', 'v', 'b', 'n', 'm'].map((key) {
+            return ElevatedButton(
+              onPressed: () => sendKeyPress(key),
+              child: Text(key),
+            );
+          }).toList(),
+        ),
+        SizedBox(height: 8),
+        // Спеціальні клавіші
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            ElevatedButton(
+              onPressed: () => sendKeyPress(' '),  // Пробіл
+              child: Text('Space'),
+            ),
+            ElevatedButton(
+              onPressed: () => sendKeyPress('\n'),  // Enter
+              child: Text('Enter'),
+            ),
+            ElevatedButton(
+              onPressed: () => sendKeyPress('\b'),  // Backspace
+              child: Text('Backspace'),
+            ),
+            ElevatedButton(
+              onPressed: () => setState(() => showKeyboard = false),
+              child: Icon(Icons.keyboard_hide),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Видалено AppBar
-      body: GestureDetector(
-        onTapDown: (details) => sendTouch(details.localPosition),
-        onPanUpdate: (details) => sendTouch(details.localPosition),
-        child: Container(
-          color: Colors.grey[300],
-          child: Center(
-            child: imageBytes != null
-                ? LayoutBuilder(
-                    builder: (context, constraints) {
-                      return Image.memory(
-                        imageBytes!,
-                        fit: BoxFit.contain,
-                        frameBuilder: (context, child, frame, _) {
-                          if (frame == null) return child;
-                          
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            final renderBox = context.findRenderObject() as RenderBox?;
-                            if (renderBox != null && mounted) {
-                              final imageInfo = Image.memory(imageBytes!).image;
-                              imageInfo.resolve(ImageConfiguration()).addListener(
-                                ImageStreamListener((info, _) {
-                                  if (mounted) {
-                                    _updateImageParams(
-                                      Size(
-                                        info.image.width.toDouble(),
-                                        info.image.height.toDouble(),
-                                      ),
-                                      renderBox.size,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => setState(() => showKeyboard = !showKeyboard),
+        child: Icon(Icons.keyboard),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTapDown: (details) => sendTouch(details.localPosition),
+              onPanUpdate: (details) => sendTouch(details.localPosition),
+              child: Container(
+                color: Colors.grey[300],
+                child: Center(
+                  child: imageBytes != null
+                      ? LayoutBuilder(
+                          builder: (context, constraints) {
+                            return Image.memory(
+                              imageBytes!,
+                              fit: BoxFit.contain,
+                              frameBuilder: (context, child, frame, _) {
+                                if (frame == null) return child;
+                                
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  final renderBox = context.findRenderObject() as RenderBox?;
+                                  if (renderBox != null && mounted) {
+                                    final imageInfo = Image.memory(imageBytes!).image;
+                                    imageInfo.resolve(ImageConfiguration()).addListener(
+                                      ImageStreamListener((info, _) {
+                                        if (mounted) {
+                                          _updateImageParams(
+                                            Size(
+                                              info.image.width.toDouble(),
+                                              info.image.height.toDouble(),
+                                            ),
+                                            renderBox.size,
+                                          );
+                                        }
+                                      }),
                                     );
                                   }
-                                }),
-                              );
-                            }
-                          });
-                          return child;
-                        },
-                      );
-                    },
-                  )
-                : CircularProgressIndicator(),
+                                });
+                                return child;
+                              },
+                            );
+                          },
+                        )
+                      : CircularProgressIndicator(),
+                ),
+              ),
+            ),
           ),
-        ),
+          if (showKeyboard) _buildVirtualKeyboard(),
+        ],
       ),
     );
   }
 }
+
+
+
