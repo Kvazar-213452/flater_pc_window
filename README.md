@@ -1,16 +1,14 @@
-# my_project_name
+# With the help of this application, you can control a PC (on which the server is running) from a phone connected to the same Wi-Fi network.
 
-A new Flutter project.
+The compilation is set up only for Android.
 
-## Getting Started
+To start, you need to run the server on the PC you want to control, and enter the IP address and port into the app on your phone.
 
-This project is a starting point for a Flutter application.
+### Run
+```
+cd server
+pyinstaller main.pyw
+flutter build apk --release
+```
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+![img](1.png)
