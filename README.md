@@ -6,9 +6,9 @@ To start, you need to run the server on the PC you want to control, and enter th
 
 ### Run
 ```
+flutter build apk --release
 cd server
 pyinstaller main.pyw
-flutter build apk --release
 ```
 
 ![img](1.jpg)
