@@ -11,4 +11,4 @@ pyinstaller main.pyw
 flutter build apk --release
 ```
 
-![img](1.png)
+![img](1.jpg)
